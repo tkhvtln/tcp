@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"net"
 	"strings"
 )
@@ -15,16 +15,15 @@ const (
 func main() {
 	listener, err := net.Listen(network, adress)
 	if err != nil {
-		fmt.Printf("Error starting TCP server: %v", err)
-		return
+		log.Fatalf("error starting TCP server: %v", err)
 	}
 	defer listener.Close()
-	fmt.Printf("Listening on %v", adress)
+	log.Printf("Listening on %v", adress)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("Error accepting connection: %v", err)
+			log.Printf("error accepting connection: %v", err)
 			continue
 		}
 
@@ -39,16 +38,17 @@ func handlerConnection(conn net.Conn) {
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Printf("Error reading from connection: %v", err)
+			log.Printf("error reading from connection: %v", err)
 			return
 		}
 
-		fmt.Printf("Message received: %v", message)
+		log.Printf("Message received: %v", message)
 		newMessage := strings.ToUpper(message)
 
 		_, err = conn.Write([]byte(newMessage))
 		if err != nil {
-			fmt.Printf("Error writing to connection: %v", err)
+			log.Printf("error writing to connection: %v", err)
+			return
 		}
 	}
 }
