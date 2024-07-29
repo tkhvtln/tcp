@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -13,42 +15,82 @@ const (
 )
 
 func main() {
+	defer closeDB()
+	err := initDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	listener, err := net.Listen(network, adress)
 	if err != nil {
-		fmt.Printf("Error starting TCP server: %v", err)
-		return
+		log.Fatalf("error starting TCP server: %v\n", err)
 	}
 	defer listener.Close()
-	fmt.Printf("Listening on %v", adress)
+	log.Printf("Listening on %v\n", adress)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("Error accepting connection: %v", err)
+			log.Printf("error accepting connection: %v\n", err)
 			continue
 		}
 
-		go handlerConnection(conn)
+		go func(c net.Conn) {
+			defer c.Close()
+			showAllUsers(c)
+			handlerConnection(c)
+		}(conn)
 	}
 }
 
 func handlerConnection(conn net.Conn) {
-	defer conn.Close()
-
 	reader := bufio.NewReader(conn)
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Printf("Error reading from connection: %v", err)
+			log.Printf("error reading from connection: %v\n", err)
 			return
 		}
 
-		fmt.Printf("Message received: %v", message)
-		newMessage := strings.ToUpper(message)
+		message = strings.TrimSpace(message)
+		if message == "" {
+			log.Println("Received empty message")
+			conn.Write([]byte("Received empty message\n"))
+			continue
+		}
+		log.Printf("Message received: %v", message)
 
-		_, err = conn.Write([]byte(newMessage))
+		idUser, err := strconv.Atoi(message)
 		if err != nil {
-			fmt.Printf("Error writing to connection: %v", err)
+			log.Printf("Invalid input: %v\n", err)
+			conn.Write([]byte("Invalid input\n"))
+			continue
+		}
+
+		userInfo, err := getUserInfo(idUser)
+		if err != nil {
+			log.Print(err)
+			userInfo = err.Error() + "\n"
+		}
+
+		_, err = conn.Write([]byte(userInfo))
+		if err != nil {
+			fmt.Printf("error writing to connection: %v\n", err)
+			return
 		}
 	}
+}
+
+func showAllUsers(conn net.Conn) {
+	users, err := getAllUsers()
+	if err != nil {
+		log.Println(err)
+		users = err.Error()
+	}
+
+	_, err = conn.Write([]byte(users + "\n"))
+	if err != nil {
+		log.Printf("error writing to connection: %v\n", err)
+	}
+
 }
