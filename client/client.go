@@ -23,12 +23,12 @@ func main() {
 	}
 	defer conn.Close()
 
-	reader := bufio.NewReader(os.Stdin)
+	osReader := bufio.NewReader(os.Stdin)
 	connReader := bufio.NewReader(conn)
 
 	for {
 		fmt.Print("Enter text: ")
-		text, err := reader.ReadString('\n')
+		text, err := osReader.ReadString('\n')
 		if err != nil {
 			log.Printf("error reading input: %v\n", err)
 			continue
