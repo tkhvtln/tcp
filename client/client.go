@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	network      = "tcp"
+	network      = "udp"
 	adress       = ":8080"
 	readTimeout  = 10 * time.Second
 	writeTimeout = 10 * time.Second
@@ -24,7 +24,7 @@ func main() {
 	defer conn.Close()
 
 	reader := bufio.NewReader(os.Stdin)
-	connReader := bufio.NewReader(conn)
+	buffer := make([]byte, 1024)
 
 	for {
 		fmt.Print("Enter text: ")
@@ -42,12 +42,13 @@ func main() {
 		}
 
 		conn.SetReadDeadline(time.Now().Add(readTimeout))
-		message, err := connReader.ReadString('\n')
+		n, err := conn.Read(buffer)
 		if err != nil {
 			log.Printf("error reading from server: %v\n", err)
 			continue
 		}
 
+		message := string(buffer[:n])
 		log.Printf("Message from server: %v", message)
 	}
 }

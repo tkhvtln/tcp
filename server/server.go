@@ -1,54 +1,42 @@
 package main
 
 import (
-	"bufio"
 	"log"
 	"net"
 	"strings"
 )
 
 const (
-	network = "tcp"
+	network = "udp"
 	adress  = ":8080"
 )
 
 func main() {
-	listener, err := net.Listen(network, adress)
+	listener, err := net.ListenPacket(network, adress)
 	if err != nil {
 		log.Fatalf("error starting TCP server: %v", err)
 	}
 	defer listener.Close()
 	log.Printf("Listening on %v", adress)
 
+	buffer := make([]byte, 1024)
 	for {
-		conn, err := listener.Accept()
+		n, addr, err := listener.ReadFrom(buffer)
 		if err != nil {
 			log.Printf("error accepting connection: %v", err)
 			continue
 		}
 
-		go handlerConnection(conn)
+		go handlerConnection(listener, addr, buffer[:n])
 	}
 }
 
-func handlerConnection(conn net.Conn) {
-	defer conn.Close()
+func handlerConnection(conn net.PacketConn, addr net.Addr, message []byte) {
+	log.Printf("Message received from %v: %v", addr, string(message))
+	newMessage := strings.ToUpper(string(message))
 
-	reader := bufio.NewReader(conn)
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			log.Printf("error reading from connection: %v", err)
-			return
-		}
-
-		log.Printf("Message received: %v", message)
-		newMessage := strings.ToUpper(message)
-
-		_, err = conn.Write([]byte(newMessage))
-		if err != nil {
-			log.Printf("error writing to connection: %v", err)
-			return
-		}
+	_, err := conn.WriteTo([]byte(newMessage), addr)
+	if err != nil {
+		log.Printf("error writing to connection: %v", err)
 	}
 }
